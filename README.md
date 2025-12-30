@@ -1,9 +1,3 @@
-Here is a comprehensive, professional **README.md** file. It covers the scientific basis, the RL architecture, the data pipeline, and the full stack implementation.
-
-You can copy-paste this directly into a file named `README.md` in your project root.
-
----
-
 # 🌊 AquaQ Nexus: Multi-Agent Oceanographic Surveillance
 
 **AquaQ Nexus** is a specialized **Multi-Agent Reinforcement Learning (MARL)** platform designed to optimize autonomous ocean monitoring. It simulates a swarm of Autonomous Underwater Vehicles (AUVs) trained to detect high-value oceanographic features (such as Algal Blooms and Hypoxic Zones) in the **Bay of Bengal**.
