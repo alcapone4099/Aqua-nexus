@@ -191,7 +191,7 @@ AquaQ_MARL/
 
 1. **Visual Cortex (5x5):**
 Allows researchers to debug the agent's behavior by seeing the exact local grid (normalized 0-1) the agent uses for navigation.
-2. **Quantum Entropy Metric (XAI):**
+2. **Quantum Entropy Metric:**
 A visualized metric (Entropy) representing the agent's internal uncertainty. High entropy = "Confused/Searching", Low entropy = "Locked on target".
 3. **Real-Time Layer Switching:**
 Instantly toggle between Chlorophyll, Temperature, Oxygen, Nitrate, and pH views. The agent's "Visual Cortex" updates its color palette (Viridis, Inferno, Plasma) to match the scientific standard of the active layer.
