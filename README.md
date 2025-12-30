@@ -1,147 +1,205 @@
-# 🌊 AquaQ Nexus
+Here is a comprehensive, professional **README.md** file. It covers the scientific basis, the RL architecture, the data pipeline, and the full stack implementation.
 
-A Multi-Agent Reinforcement Learning (MARL) platform for autonomous ocean monitoring.
-**System Type:** Multi-Agent Reinforcement Learning (MARL) Simulation for Oceanographic Monitoring.
-**Region of Interest:** Bay of Bengal (Lat: 5°N–22°N, Lon: 80°E–96°E).
+You can copy-paste this directly into a file named `README.md` in your project root.
 
-## 🚀 Features
-- **Swarm Intelligence:** 4 Agents trained via PPO to hunt pollution.
-- **Real Physics:** Simulates Chlorophyll, Oxygen, Temp, Nitrate, and pH.
-- **Interactive Dashboard:** React + TypeScript frontend with live telemetry.
+---
 
-## 🛠️ Installation
+# 🌊 AquaQ Nexus: Multi-Agent Oceanographic Surveillance
 
-### Backend (Python)
+**AquaQ Nexus** is a specialized **Multi-Agent Reinforcement Learning (MARL)** platform designed to optimize autonomous ocean monitoring. It simulates a swarm of Autonomous Underwater Vehicles (AUVs) trained to detect high-value oceanographic features (such as Algal Blooms and Hypoxic Zones) in the **Bay of Bengal**.
+
+The project bridges the gap between **Satellite Oceanography** and **Swarm Robotics**, providing a sophisticated web interface for real-time telemetry and explainable AI visualization.
+
+---
+
+## 🌍 1. The Scientific Basis & Data Pipeline
+
+### The Environment: Bay of Bengal
+
+The simulation operates on real-world satellite data coordinates: **Latitude 5°N - 22°N** and **Longitude 80°E - 96°E**.
+
+### Dataset Ingestion
+
+We utilize **NetCDF (.nc)** files sourced from the **Copernicus Marine Service**.
+The raw data undergoes a rigorous preprocessing pipeline (`src/data_ingestion.py`):
+
+1. **Time-Averaging:** Compresses 1 month of temporal data into a mean composite to represent persistent ocean conditions.
+2. **Geometric Correction:** Applies `np.flipud` to correct satellite indexing, ensuring **North is Top** and **West is Left**.
+3. **Logarithmic Scaling (Log1p):** Raw ocean data is heavily skewed (outliers). We apply `log(1 + x)` scaling followed by Min-Max normalization. This preserves massive outliers (pollution spikes) while making subtle gradients (currents/eddies) visible to the AI.
+
+### The 5 Ocean Parameters
+
+The agents monitor five distinct layers, switchable in the UI:
+
+* **Chlorophyll-a (Chl):** Proxy for phytoplankton. High values indicate Algal Blooms.
+* **Dissolved Oxygen (O2):** Critical for marine life. Low values (<2ml/L) indicate "Dead Zones."
+* **Temperature (SST):** Drivers of cyclogenesis and coral bleaching.
+* **Nitrate (NO3):** Nutrient runoff from agriculture (Ganges-Brahmaputra delta).
+* **pH:** Monitors ocean acidification trends.
+
+---
+
+## 🧠 2. The Intelligence: Reinforcement Learning (RL)
+
+### Framework
+
+* **Algorithm:** **PPO (Proximal Policy Optimization)**.
+* **Library:** `Stable-Baselines3`.
+* **Environment:** Custom `Gymnasium` environment (`OceanMonitorEnv`).
+
+### Agent State Space (The Input)
+
+The Neural Network receives a flattened vector for each agent containing:
+
+1. **Position:** Normalized `(x, y)` coordinates.
+2. **Energy:** Battery level `(0.0 - 1.0)`.
+3. **Sensor Readings:** The exact values of the 5 chemical layers at the current location.
+
+### Action Space (The Output)
+
+A **Discrete** action space with 5 options:
+
+* `0`: **HOLD/SCAN** (Consumes energy, gathers high-fidelity data).
+* `1`: **MOVE SOUTH**
+* `2`: **MOVE NORTH**
+* `3`: **MOVE WEST**
+* `4`: **MOVE EAST**
+
+### Reward Function
+
+The swarm is trained to maximize:
+
+
+* **Positive:** Finding high Chlorophyll concentration (Algae).
+* **Negative:** Every movement costs battery. Colliding with other agents applies a heavy penalty to encourage dispersion.
+
+---
+
+## 💻 3. Technical Architecture
+
+### Backend (`/aquaq-web/backend`)
+
+Built with **FastAPI**. It serves as the bridge between the Python simulation and the React frontend.
+
+* **Headless Rendering:** Uses `matplotlib.use('Agg')` to generate high-resolution map tiles on the server side to avoid GUI crashes.
+* **Simulation Loop:** Maintains the `OceanEnv` instance and steps it forward upon request.
+* **Visual Cortex Extraction:** Slices a **5x5 matrix** around each agent from the global grid to simulate the agent's "local vision."
+
+### Frontend (`/aquaq-web/frontend`)
+
+Built with **React (Vite) + TypeScript**.
+
+* **Styling:** **Tailwind CSS** (Dark Mode / Sci-Fi aesthetic).
+* **Visualization:**
+* **Global Map:** Real-time Base64 image stream from backend.
+* **Visual Cortex:** A dynamic 5x5 grid showing exactly what the selected agent "sees."
+* **Telemetry:** `Recharts` line graphs tracking live sensor history.
+
+
+* **Scientific Context:** Dynamic side-panels explaining the oceanographic significance of the active layer.
+
+---
+
+## 🚀 4. Installation & Setup
+
+### Prerequisites
+
+* Python 3.9+
+* Node.js & npm
+
+### Step 1: Clone and Setup Python
+
 ```bash
-cd AquaQ_MARL
+# 1. Create Virtual Env
 python -m venv venv
-# Windows:
+# Windows
 .\venv\Scripts\activate
-pip install -r requirements.txt
-python src/data_ingestion.py  # Generate environment
-uvicorn aquaq-web.backend.app.main:app --reload
+# Mac/Linux
+source venv/bin/activate
 
+# 2. Install Python Dependencies
+pip install numpy pandas xarray netCDF4 matplotlib scipy gymnasium stable-baselines3 fastapi uvicorn
 
-### 1. The Data Layer (The Environment)
+```
 
-The foundation of the project is real-world earth observation data, not random noise.
+### Step 2: Data Ingestion
 
-* **Source:** Copernicus Marine Service (NetCDF format).
-* **Timeframe:** 1-Month Average (Nov 28, 2025 – Dec 28, 2025).
-* **The 5 Dimensions (Channels):**
-1. **Chlorophyll-a (Chl):** Proxy for phytoplankton and algal blooms.
-2. **Dissolved Oxygen (O2):** Critical for marine life; low values indicate "Dead Zones."
-3. **Temperature (SST):** Driver of cyclones and coral bleaching.
-4. **Nitrate (NO3):** Agricultural runoff/nutrients.
-5. **pH:** Ocean acidification monitoring.
+Place your 5 `.nc` files in `data/raw/`. Then run the ingestion engine to generate the log-scaled environment.
 
+```bash
+python src/data_ingestion.py
 
+```
 
-**The Preprocessing Pipeline (`data_ingestion.py`):**
-Raw satellite data is messy (clouds, land masks, extreme outliers). We apply a rigorous pipeline:
+### Step 3: Train the Swarm
 
-1. **Time Averaging:** We collapse the time dimension to create a stable "Monthly Composite."
-2. **Geometric Correction:** Satellite data is indexed South-to-North. We apply `np.flipud` to ensure the map renders with North at the top (Kolkata) and South at the bottom (Sri Lanka).
-3. **Logarithmic Scaling:** Ocean data follows a "long tail" distribution (massive outliers). We apply `np.log1p(x)` to "squash" the outliers. This allows the AI (and the human eye) to see subtle gradients in currents and eddies, rather than just one bright spot and a black map.
-4. **Normalization:** All data is scaled strictly between `0.0` and `1.0` for the Neural Network.
+Train the PPO agents on the processed data.
 
-**Final Output:** A 3D Tensor of shape `(50, 50, 5)` saved as `ocean_grid.npy`.
+```bash
+python src/train.py
 
----
+```
 
-### 2. The Intelligence Layer (Reinforcement Learning)
+### Step 4: Launch the Web Platform
 
-The "Brains" of the swarm are powered by Deep Reinforcement Learning.
+**Terminal 1 (Backend):**
 
-* **Framework:** Stable Baselines3 (PyTorch backend).
-* **Algorithm:** **PPO (Proximal Policy Optimization)**. PPO is chosen for its stability and ability to handle continuous/discrete hybrid spaces effectively.
-* **Architecture:** **CTDE (Centralized Training, Decentralized Execution)**.
-* *Training:* The model learns from the global state.
-* *Execution:* Each agent acts based on its local view.
+```bash
+cd aquaq-web/backend
+uvicorn app.main:app --reload
 
+```
 
+**Terminal 2 (Frontend):**
 
-#### The Agent Specifications:
+```bash
+cd aquaq-web/frontend
+npm install
+npm run dev
 
-* **State Space (Input Vector):** What the agent "sees" at every timestep.
-* `[x, y]` (Normalized Position)
-* `[Battery]` (0.0 to 1.0)
-* `[Chl, O2, Temp, NO3, pH]` (Sensor readings at current location).
-* *Total Input Dimension:* 8 floats per agent.
-
-
-* **Action Space (Output):** Discrete.
-* `0`: Stay/Scan (Higher reward, battery cost).
-* `1`: Move South.
-* `2`: Move North.
-* `3`: Move West.
-* `4`: Move East.
-
-
-* **Reward Function:**
-* **+ Positive:** Proportional to the Chlorophyll level found (incentivizes finding pollution).
-* **- Negative:** Small penalty for every movement (battery cost) and a larger penalty for colliding or hitting land.
-
-
+```
 
 ---
 
-### 3. The Backend Layer (FastAPI)
+## 📂 5. Project Structure
 
-The bridge between the Python simulation and the Web Interface.
+```text
+AquaQ_MARL/
+├── data/
+│   ├── raw/                   # Source .nc files (Copernicus)
+│   └── processed/             # ocean_grid.npy (The simulation world)
+├── models/                    # Trained PPO .zip models
+├── src/
+│   ├── config.py              # Global settings (Lat/Lon, Grid Size)
+│   ├── data_ingestion.py      # Log-scaling & Geometric correction logic
+│   ├── environment.py         # Gymnasium RL Environment
+│   └── train.py               # PPO Training Script
+└── aquaq-web/
+    ├── backend/
+    │   └── app/
+    │       ├── main.py        # FastAPI Server & Map Renderer
+    │       └── environment.py # Web-specific Sim Wrapper
+    └── frontend/
+        ├── src/
+        │   ├── components/
+        │   │   ├── GridMap.tsx    # Global Map Component
+        │   │   ├── LocalGrid.tsx  # 5x5 Visual Cortex
+        │   │   └── Telemetry.tsx  # Live Sensor Graphs
+        │   ├── lib/
+        │   │   └── constants.ts   # Unit Conversions & Scientific Text
+        │   └── App.tsx            # Main Dashboard Layout
 
-* **Technology:** FastAPI (Python).
-* **Rendering Engine:** Matplotlib (Running in `Agg` headless mode).
-* **Data Flow:**
-1. **Global Map Generation:** The backend slices the 3D tensor at the requested layer (e.g., Layer 2 for Temp). It applies the correct colormap (Inferno, Viridis, etc.) and renders it to a PNG image in memory. This is converted to a **Base64 string** and sent to the frontend.
-2. **Local Vision Extraction:** The backend extracts a `5x5` sub-grid around the requested agent. This simulates the agent's limited "Visual Cortex."
-3. **Physics Simulation:** It calculates the battery drain and position updates based on the move received.
-
-
-
----
-
-### 4. The Frontend Layer (React + TypeScript)
-
-The "Mission Control" dashboard.
-
-* **Framework:** React (Vite).
-* **Styling:** Tailwind CSS (Dark Mode/Sci-Fi aesthetic).
-* **State Management:** React Hooks (`useState`, `useEffect`) polling the backend every 500ms.
-
-#### Visualization Techniques:
-
-1. **The GridMap (Left Panel):**
-* Displays the Base64 Global Map from the backend.
-* Overlays HTML `<div>` elements for agents.
-* **Animation:** Uses CSS transitions (`duration-500`) to smooth the movement of agents, making them look like they are gliding rather than teleporting.
-
-
-2. **The Scientific Context:**
-* A dynamic text engine that updates descriptions based on the active layer (e.g., explaining Hypoxia when viewing Oxygen).
-
-
-3. **The "Visual Cortex" (Right Panel):**
-* This is the **5x5 Grid**.
-* **Data:** Receives raw normalized floats (0.0 - 1.0) from the backend.
-* **Color Math:** The frontend performs client-side color interpolation. It takes a value (e.g., `0.8`) and calculates the exact RGB value between the start and end colors of the active colormap (e.g., blending Yellow and Red for Temperature).
-* **Unit Conversion:** It takes the normalized float and maps it back to physical units (e.g., `0.5` -> `28.5°C`) using the linear formulas we defined.
-
-
-4. **Telemetry (Graphs):**
-* Uses `Recharts` to plot the history of sensor readings, providing a temporal view of the mission.
-
-
+```
 
 ---
 
-### 5. Summary of the Workflow
+## ✨ Key Features
 
-1. **Ingestion:** Python reads Satellite NC files -> Creates `ocean_grid.npy`.
-2. **Training:** PPO Agent interacts with this grid to learn a policy -> Saves `ppo_swarm.zip`.
-3. **Server:** FastAPI loads the grid + PPO model.
-4. **Client:** React requests "State".
-5. **Response:** Server returns `{MapImage (Base64), AgentPositions, LocalGrid(5x5), SensorReadings}`.
-6. **Render:** React draws the map, interpolates the colors for the local grid, and updates the graphs.
-
-This system is now a closed-loop "Digital Twin" of a real ocean monitoring mission.
+1. **Visual Cortex (5x5):**
+Allows researchers to debug the agent's behavior by seeing the exact local grid (normalized 0-1) the agent uses for navigation.
+2. **Quantum Entropy Metric (XAI):**
+A visualized metric (Entropy) representing the agent's internal uncertainty. High entropy = "Confused/Searching", Low entropy = "Locked on target".
+3. **Real-Time Layer Switching:**
+Instantly toggle between Chlorophyll, Temperature, Oxygen, Nitrate, and pH views. The agent's "Visual Cortex" updates its color palette (Viridis, Inferno, Plasma) to match the scientific standard of the active layer.
+4. **Physics-Aware Units:**
+All data is converted from normalized AI inputs back to real-world units (e.g., **µM** for Nitrate, **°C** for Temp) for display.
