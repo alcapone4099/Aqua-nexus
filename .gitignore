@@ -1,0 +1,19 @@
+# --- Python & System Junk ---
+__pycache__/
+*.py[cod]
+venv/
+.env
+.DS_Store
+
+# --- Node.js (Frontend Junk) ---
+node_modules/
+dist/
+.vscode/
+
+# --- Large Data Files (GitHub has a 100MB limit) ---
+# We ignore raw satellite data because others should download it themselves
+data/raw/*.nc
+data/processed/*.npy
+
+# --- Optional: Ignore the model if it is >100MB ---
+# models/*.zip
